@@ -7,6 +7,9 @@ const authRoutes = require('./routes/auth');
 
 const app = express();
 
+// const authMiddleware = require('./middleware/auth');
+
+
 app.use(cors()); // cors() allows frontend to talk to backend
 app.use(express.json()); // allows server to read json data sent in requests
 
@@ -19,6 +22,7 @@ app.use('/api/auth', authRoutes);
 app.get('/', (req, res) => {
   res.send('Server is running');
 });
+
 
 const PORT = 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
