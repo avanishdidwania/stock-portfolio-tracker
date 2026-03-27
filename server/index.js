@@ -7,6 +7,9 @@ const authRoutes = require('./routes/auth');
 
 const app = express();
 
+const stockRoutes = require('./routes/stocks');
+app.use('/api/stocks', stockRoutes);
+
 // const authMiddleware = require('./middleware/auth');
 
 
