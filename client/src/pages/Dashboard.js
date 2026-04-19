@@ -116,6 +116,12 @@ const Dashboard = () => {
                     <p>Buy Price: ₹{item.buyPrice}</p>
                     <p>Current Price: ₹{stockData[item.symbol]?.['05. price'] || 'Loading...'}</p>
                     <p>Change: {stockData[item.symbol]?.['10. change percent'] || '...'}</p>
+                    <p>
+                        Gain/Loss: ₹{(
+                            (parseFloat(stockData[item.symbol]?.['05. price']) - item.buyPrice) 
+                            * item.shares
+                        ).toFixed(2) || '...'}
+                    </p>
                     <button onClick={() => removeStock(item._id)}>Remove</button>
                 </div>
             ))}
