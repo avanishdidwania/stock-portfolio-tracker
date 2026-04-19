@@ -3,16 +3,15 @@ const router = express.Router();
 const axios = require('axios');
 const authMiddleware = require('../middleware/auth');
 
-router.get('/:symbol', authMiddleware, async (req, res) => {
-    const symbol = req.params.symbol;
-
+router.get('/search/:keywords', authMiddleware, async (req, res) => {
+    const { keywords } = req.params;
     try {
         const response = await axios.get(
-            `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${process.env.ALPHA_VANTAGE_KEY}`
+            `https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=${keywords}&apikey=${process.env.ALPHA_VANTAGE_KEY}`
         );
-        res.json(response.data);
+        res.json(response.data['bestMatches']);
     } catch (err) {
-        res.status(500).json({ msg: 'Error fetching stock data' });
+        res.status(500).json({ msg: 'Error searching stocks' });
     }
 });
 
@@ -40,5 +39,22 @@ router.get('/history/:symbol', authMiddleware, async (req, res) => {
         res.status(500).json({ msg: 'Error fetching history' });
     }
 });
+
+router.get('/:symbol', authMiddleware, async (req, res) => {
+    const symbol = req.params.symbol;
+
+    try {
+        const response = await axios.get(
+            `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${process.env.ALPHA_VANTAGE_KEY}`
+        );
+        res.json(response.data);
+    } catch (err) {
+        res.status(500).json({ msg: 'Error fetching stock data' });
+    }
+});
+
+
+
+
 
 module.exports = router;
