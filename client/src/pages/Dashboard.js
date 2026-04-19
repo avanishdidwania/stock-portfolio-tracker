@@ -1,3 +1,4 @@
+import API_URL from '../config';
 import { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import AuthContext from '../context/AuthContext';
@@ -27,7 +28,7 @@ const Dashboard = () => {
 
     const fetchPortfolio = async () => {
         try {
-            const response = await axios.get('http://localhost:5000/api/portfolio', {
+            const response = await axios.get(`${API_URL}/api/portfolio`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setPortfolio(response.data);
@@ -51,7 +52,7 @@ const Dashboard = () => {
 
     const fetchStockData = async (symbol) => {
         try {
-            const response = await axios.get(`http://localhost:5000/api/stocks/${symbol}`, {
+            const response = await axios.get(`${API_URL}/api/stocks/${symbol}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setStockData(prev => ({ ...prev, [symbol]: response.data['Global Quote'] }));
@@ -62,7 +63,7 @@ const Dashboard = () => {
 
     const fetchChartData = async (symbol) => {
         try {
-            const response = await axios.get(`http://localhost:5000/api/stocks/history/${symbol}`, {
+            const response = await axios.get(`${API_URL}/api/stocks/history/${symbol}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setChartData(prev => ({ ...prev, [symbol]: response.data }));
@@ -74,7 +75,7 @@ const Dashboard = () => {
     const addStock = async () => {
         const upperSymbol = symbol.toUpperCase();
         try {
-            await axios.post('http://localhost:5000/api/portfolio',
+            await axios.post(`${API_URL}/api/portfolio`,
                 { symbol: upperSymbol, shares, buyPrice },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -91,7 +92,7 @@ const Dashboard = () => {
 
     const removeStock = async (id) => {
         try {
-            await axios.delete(`http://localhost:5000/api/portfolio/${id}`,
+            await axios.delete(`${API_URL}/api/portfolio/${id}`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             await fetchPortfolio();
@@ -107,7 +108,7 @@ const Dashboard = () => {
             return;
         }
         try {
-            const response = await axios.get(`http://localhost:5000/api/stocks/search/${query}`, {
+            const response = await axios.get(`${API_URL}/stocks/search/${query}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (response.data && response.data.length > 0) {

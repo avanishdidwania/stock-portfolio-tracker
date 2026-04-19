@@ -1,3 +1,4 @@
+import API_URL from '../config';
 import {useState, useContext} from 'react';
 import {useNavigate} from 'react-router-dom';
 import axios from 'axios';
@@ -16,7 +17,7 @@ const Register = () =>{
         e.preventDefault();
 
         try{
-            const response = await axios.post('http://localhost:5000/api/auth/register', {
+            const response = await axios.post(`${API_URL}/api/auth/register`, {
                 name,
                 email,
                 password
