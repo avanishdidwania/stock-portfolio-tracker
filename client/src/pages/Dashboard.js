@@ -24,7 +24,8 @@ const Dashboard = () => {
 
     useEffect(() => {
         fetchPortfolio();
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);;
 
     const fetchPortfolio = async () => {
         try {
@@ -122,6 +123,22 @@ const Dashboard = () => {
 
     if (loading) return <div>Loading...</div>;
 
+    const totalCurrentValue = portfolio.reduce((total, item) => {
+        const currentPrice = parseFloat(stockData[item.symbol]?.['05. price']) || 0;
+        return total + (currentPrice * item.shares);
+    }, 0);
+
+    const totalStartValue = portfolio.reduce((total, item) => {
+        const oldPrice = chartData[item.symbol]?.[0]?.price || 0;
+        return total + (oldPrice * item.shares);
+    }, 0);
+
+    const monthlyChange = totalStartValue > 0
+        ? (((totalCurrentValue - totalStartValue) / totalStartValue) * 100).toFixed(2)
+        : 0;
+
+    const monthlyChangeAmount = (totalCurrentValue - totalStartValue).toFixed(2);
+
     return (
         <div>
             {/* Header */}
@@ -129,7 +146,15 @@ const Dashboard = () => {
                 <h1>Stock Portfolio Tracker</h1>
                 <button onClick={logout}>Logout</button>
             </div>
-
+            {/* Portfolio Value */}
+            <div>
+                <p>Portfolio Value</p>
+                <h2>₹{totalCurrentValue.toFixed(2)}</h2>
+                <p style={{ color: monthlyChange >= 0 ? 'green' : 'red' }}>
+                    {monthlyChange >= 0 ? '↑' : '↓'} {monthlyChange}% &nbsp;
+                    ₹{monthlyChangeAmount} this month
+                </p>
+            </div>
             {/* Add Stock Form */}
             <div>
                 <div style={{ position: 'relative' }}>
