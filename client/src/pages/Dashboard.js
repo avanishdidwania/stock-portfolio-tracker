@@ -21,11 +21,24 @@ const Dashboard = () => {
     const [searchResults, setSearchResults] = useState([]);
     const [showDropdown, setShowDropdown] = useState(false);
     const [searchTimer, setSearchTimer] = useState(null);
+    const [news, setNews] = useState({});
 
     useEffect(() => {
         fetchPortfolio();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);;
+
+
+    const fetchNews = async (symbol) => {
+        try {
+            const response = await axios.get(`${API_URL}/api/stocks/news/${symbol}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setNews(prev => ({ ...prev, [symbol]: response.data }));
+        } catch (err) {
+            console.log('Error fetching news');
+        }
+    };
 
     const fetchPortfolio = async () => {
         try {
@@ -43,6 +56,12 @@ const Dashboard = () => {
                 setTimeout(() => {
                     fetchChartData(item.symbol);
                 }, (index + 1) * 12000);
+            });
+
+            response.data.forEach((item, index) => {
+                setTimeout(() => {
+                    fetchNews(item.symbol);
+                }, (index + 1) * 3000);
             });
 
         } catch (err) {
@@ -251,6 +270,23 @@ const Dashboard = () => {
                         )}>
                             {selectedStock === item.symbol ? 'Hide Chart' : 'Show Chart'}
                         </button>
+
+                        {/* News */}
+                        {news[item.symbol] && news[item.symbol].length > 0 && (
+                            <div>
+                                <h4>Latest News</h4>
+                                {news[item.symbol].map((article, index) => (
+                                    <div key={index}>
+                                        <a href={article.url} target="_blank" rel="noreferrer">
+                                            <img src={article.urlToImage} alt={article.title} width="60" />
+                                            <strong>{article.title}</strong>
+                                        </a>
+                                        <p>{article.description}</p>
+                                        <small>{new Date(article.publishedAt).toLocaleDateString()}</small>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 ))}
             </div>
