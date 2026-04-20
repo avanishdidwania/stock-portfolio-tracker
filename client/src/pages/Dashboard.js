@@ -22,12 +22,81 @@ const Dashboard = () => {
     const [showDropdown, setShowDropdown] = useState(false);
     const [searchTimer, setSearchTimer] = useState(null);
     const [news, setNews] = useState({});
+    const [compareSymbol, setCompareSymbol] = useState('');
+    const [compareData, setCompareData] = useState(null);
+    const [watchlist, setWatchlist] = useState([]);
+    const [watchlistSymbol, setWatchlistSymbol] = useState('');
+    const [watchlistData, setWatchlistData] = useState({});
 
     useEffect(() => {
         fetchPortfolio();
+        fetchWatchlist();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);;
 
+    const fetchWatchlist = async () => {
+    try {
+        const response = await axios.get(`${API_URL}/api/watchlist`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        setWatchlist(response.data);
+        
+        // stagger watchlist stock calls after portfolio calls
+        response.data.forEach((item, index) => {
+            setTimeout(() => {
+                fetchWatchlistStockData(item.symbol);
+            }, (index + 2) * 13000); // starts after portfolio calls
+        });
+    } catch (err) {
+        console.log('Error fetching watchlist');
+    }
+};
+
+    const fetchWatchlistStockData = async (symbol) => {
+        try {
+            const response = await axios.get(`${API_URL}/api/stocks/${symbol}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setWatchlistData(prev => ({ ...prev, [symbol]: response.data['Global Quote'] }));
+        } catch (err) {
+            console.log('Error fetching watchlist stock data');
+        }
+    };
+
+    const addToWatchlist = async () => {
+        try {
+            await axios.post(`${API_URL}/api/watchlist`,
+                { symbol: watchlistSymbol.toUpperCase() },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            await fetchWatchlist();
+            setWatchlistSymbol('');
+        } catch (err) {
+            setError('Error adding to watchlist');
+        }
+    };
+
+    const removeFromWatchlist = async (id) => {
+        try {
+            await axios.delete(`${API_URL}/api/watchlist/${id}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            await fetchWatchlist();
+        } catch (err) {
+            setError('Error removing from watchlist');
+        }
+    };
+
+    const fetchCompareStock = async () => {
+        try {
+            const response = await axios.get(`${API_URL}/api/stocks/${compareSymbol}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setCompareData(response.data['Global Quote']);
+        } catch (err) {
+            setError('Error fetching comparison stock');
+        }
+    };
 
     const fetchNews = async (symbol) => {
         try {
@@ -41,34 +110,37 @@ const Dashboard = () => {
     };
 
     const fetchPortfolio = async () => {
-        try {
-            const response = await axios.get(`${API_URL}/api/portfolio`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setPortfolio(response.data);
-            setLoading(false);
+    try {
+        const response = await axios.get(`${API_URL}/api/portfolio`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        setPortfolio(response.data);
+        setLoading(false);
 
-            response.data.forEach(item => {
+        // stagger stock data calls
+        response.data.forEach((item, index) => {
+            setTimeout(() => {
                 fetchStockData(item.symbol);
-            });
+            }, index * 13000); // 13 second gap
+        });
 
-            response.data.forEach((item, index) => {
-                setTimeout(() => {
-                    fetchChartData(item.symbol);
-                }, (index + 1) * 12000);
-            });
+        response.data.forEach((item, index) => {
+            setTimeout(() => {
+                fetchChartData(item.symbol);
+            }, (index + 1) * 15000);
+        });
 
-            response.data.forEach((item, index) => {
-                setTimeout(() => {
-                    fetchNews(item.symbol);
-                }, (index + 1) * 3000);
-            });
+        response.data.forEach((item, index) => {
+            setTimeout(() => {
+                fetchNews(item.symbol);
+            }, (index + 1) * 3000);
+        });
 
-        } catch (err) {
-            setError('Error fetching portfolio');
-            setLoading(false);
-        }
-    };
+    } catch (err) {
+        setError('Error fetching portfolio');
+        setLoading(false);
+    }
+};
 
     const fetchStockData = async (symbol) => {
         try {
@@ -122,23 +194,25 @@ const Dashboard = () => {
     };
 
     const searchStocks = async (query) => {
-        if (query.length < 2) {
-            setSearchResults([]);
-            setShowDropdown(false);
-            return;
+    if (query.length < 2) {
+        setSearchResults([]);
+        setShowDropdown(false);
+        return;
+    }
+    try {
+        console.log('Searching for:', query); // add this
+        const response = await axios.get(`${API_URL}/api/stocks/search/${query}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        console.log('Search response:', response.data); // add this
+        if (response.data && response.data.length > 0) {
+            setSearchResults(response.data);
+            setShowDropdown(true);
         }
-        try {
-            const response = await axios.get(`${API_URL}/stocks/search/${query}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (response.data && response.data.length > 0) {
-                setSearchResults(response.data);
-                setShowDropdown(true);
-            }
-        } catch (err) {
-            console.log('Search error');
-        }
-    };
+    } catch (err) {
+        console.log('Search error:', err);
+    }
+};
 
     if (loading) return <div>Loading...</div>;
 
@@ -157,6 +231,25 @@ const Dashboard = () => {
         : 0;
 
     const monthlyChangeAmount = (totalCurrentValue - totalStartValue).toFixed(2);
+
+    const assetPerformance = portfolio.map(item => {
+        const currentPrice = parseFloat(stockData[item.symbol]?.['05. price']) || 0;
+        const currentValue = currentPrice * item.shares;
+        const investedValue = item.buyPrice * item.shares;
+        const gainLoss = currentValue - investedValue;
+        const gainLossPercent = investedValue > 0 ? ((gainLoss / investedValue) * 100).toFixed(2) : 0;
+        const allocation = totalCurrentValue > 0 ? ((currentValue / totalCurrentValue) * 100).toFixed(2) : 0;
+
+        return {
+            symbol: item.symbol,
+            shares: item.shares,
+            currentValue: currentValue.toFixed(2),
+            investedValue: investedValue.toFixed(2),
+            gainLoss: gainLoss.toFixed(2),
+            gainLossPercent,
+            allocation
+        };
+    });
 
     return (
         <div>
@@ -289,6 +382,121 @@ const Dashboard = () => {
                         )}
                     </div>
                 ))}
+            </div>
+            {/* Asset Performance Table */}
+            <div>
+                <h3>Asset Performance</h3>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                        <tr>
+                            <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #ccc' }}>Asset</th>
+                            <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #ccc' }}>Allocation</th>
+                            <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #ccc' }}>Invested</th>
+                            <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #ccc' }}>Current Value</th>
+                            <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #ccc' }}>Gain/Loss</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {assetPerformance.map((asset) => (
+                            <tr key={asset.symbol}>
+                                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>{asset.symbol}</td>
+                                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>{asset.allocation}%</td>
+                                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>₹{asset.investedValue}</td>
+                                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>₹{asset.currentValue}</td>
+                                <td style={{
+                                    padding: '8px',
+                                    borderBottom: '1px solid #eee',
+                                    color: asset.gainLoss >= 0 ? 'green' : 'red'
+                                }}>
+                                    {asset.gainLoss >= 0 ? '+' : ''}₹{asset.gainLoss} ({asset.gainLossPercent}%)
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            {/* Stock Comparison */}
+            <div>
+                <h3>Stock Comparison</h3>
+                <div>
+                    <input
+                        type="text"
+                        placeholder="Enter symbol to compare (e.g. TCS.BSE)"
+                        value={compareSymbol}
+                        onChange={(e) => setCompareSymbol(e.target.value.toUpperCase())}
+                    />
+                    <button onClick={fetchCompareStock}>Compare</button>
+                </div>
+
+                {compareData && (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
+                        <thead>
+                            <tr>
+                                <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #ccc' }}>Symbol</th>
+                                <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #ccc' }}>Price</th>
+                                <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #ccc' }}>Change</th>
+                                <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #ccc' }}>Change %</th>
+                                <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #ccc' }}>High</th>
+                                <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #ccc' }}>Low</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {portfolio.map(item => (
+                                stockData[item.symbol] && (
+                                    <tr key={item.symbol}>
+                                        <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>{item.symbol}</td>
+                                        <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>₹{stockData[item.symbol]['05. price']}</td>
+                                        <td style={{ padding: '8px', borderBottom: '1px solid #eee', color: parseFloat(stockData[item.symbol]['09. change']) >= 0 ? 'green' : 'red' }}>
+                                            {stockData[item.symbol]['09. change']}
+                                        </td>
+                                        <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>{stockData[item.symbol]['10. change percent']}</td>
+                                        <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>₹{stockData[item.symbol]['03. high']}</td>
+                                        <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>₹{stockData[item.symbol]['04. low']}</td>
+                                    </tr>
+                                )
+                            ))}
+                            {/* Comparison stock row */}
+                            <tr>
+                                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>{compareData['01. symbol']}</td>
+                                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>₹{compareData['05. price']}</td>
+                                <td style={{ padding: '8px', borderBottom: '1px solid #eee', color: parseFloat(compareData['09. change']) >= 0 ? 'green' : 'red' }}>
+                                    {compareData['09. change']}
+                                </td>
+                                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>{compareData['10. change percent']}</td>
+                                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>₹{compareData['03. high']}</td>
+                                <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>₹{compareData['04. low']}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                )}
+            </div>
+            {/* Watchlist */}
+            <div>
+                <h3>Watchlist</h3>
+                <div>
+                    <input
+                        type="text"
+                        placeholder="Add symbol to watchlist (e.g. TCS.BSE)"
+                        value={watchlistSymbol}
+                        onChange={(e) => setWatchlistSymbol(e.target.value.toUpperCase())}
+                    />
+                    <button onClick={addToWatchlist}>Add to Watchlist</button>
+                </div>
+
+                <div>
+                    {watchlist.map((item) => (
+                        <div key={item._id}>
+                            <h4>{item.symbol}</h4>
+                            <p>Price: ₹{watchlistData[item.symbol]?.['05. price'] || 'Loading...'}</p>
+                            <p style={{ color: parseFloat(watchlistData[item.symbol]?.['09. change']) >= 0 ? 'green' : 'red' }}>
+                                Change: {watchlistData[item.symbol]?.['09. change'] || '...'} ({watchlistData[item.symbol]?.['10. change percent'] || '...'})
+                            </p>
+                            <p>High: ₹{watchlistData[item.symbol]?.['03. high'] || '...'}</p>
+                            <p>Low: ₹{watchlistData[item.symbol]?.['04. low'] || '...'}</p>
+                            <button onClick={() => removeFromWatchlist(item._id)}>Remove</button>
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );
