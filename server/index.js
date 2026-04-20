@@ -3,9 +3,12 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config(); // loads .env
 
+
 const authRoutes = require('./routes/auth');
 const stockRoutes = require('./routes/stocks');
 const portfolioRoutes = require('./routes/portfolio');
+const watchlistRoutes = require('./routes/watchlist');
+console.log('WatchlistRoutes:', watchlistRoutes);
 
 const app = express();
 
@@ -22,6 +25,7 @@ mongoose.connect(process.env.MONGO_URI)
 app.use('/api/auth', authRoutes);
 app.use('/api/stocks', stockRoutes);
 app.use('/api/portfolio', portfolioRoutes);
+app.use('/api/watchlist', watchlistRoutes);
 
 app.get('/', (req, res) => {
   res.send('Server is running');
