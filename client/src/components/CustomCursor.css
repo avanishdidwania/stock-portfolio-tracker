@@ -1,0 +1,41 @@
+/* Hide native cursor globally on desktop */
+@media (min-width: 768px) {
+    *, *::before, *::after {
+        cursor: none !important;
+    }
+}
+
+.smooth-cursor-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 999999;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  will-change: transform;
+}
+
+.smooth-cursor-wrapper.visible {
+  opacity: 1;
+}
+
+.smooth-cursor-dot {
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px; /* Center perfectly */
+  background-color: var(--accent-yellow, #ffc107);
+  border-radius: 50%;
+  box-shadow: 0 0 12px rgba(255, 193, 7, 0.4);
+  /* Smooth transition ONLY for hover states */
+  transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.2s ease, box-shadow 0.2s ease;
+  will-change: transform;
+}
+
+/* Hover state on links/buttons */
+.smooth-cursor-dot.enlarged {
+  transform: scale(3.5);
+  background-color: rgba(255, 193, 7, 0.15); /* Becomes glass-like */
+  border: 1px solid rgba(255, 193, 7, 0.8);
+  box-shadow: 0 0 20px rgba(255, 193, 7, 0.2);
+}
